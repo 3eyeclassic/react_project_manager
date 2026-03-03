@@ -1,0 +1,136 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useClients, useCreateClient } from "@/hooks/useClients";
+import { ClientForm } from "../components/ClientForm";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Plus, Search, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export function ClientsPage() {
+  const user = useCurrentUser();
+  const { data: clients = [], isLoading, error } = useClients(user?.id);
+  const createClient = useCreateClient(user?.id);
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  const filtered = clients.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const name = (c.name ?? "").toLowerCase();
+    const company = (c.company_name ?? "").toLowerCase();
+    return name.includes(q) || company.includes(q);
+  });
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+        {error.message}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">クライアント</h1>
+          <p className="text-muted-foreground">クライアント一覧と管理</p>
+        </div>
+        <Button onClick={() => setShowForm(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          新規追加
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle>新規クライアント</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
+              閉じる
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <ClientForm
+              onSubmit={async (input) => {
+                await createClient.mutateAsync(input);
+                setShowForm(false);
+              }}
+              onCancel={() => setShowForm(false)}
+              isLoading={createClient.isPending}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="名前・会社名で検索..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="h-28 animate-pulse rounded-lg border bg-muted/50"
+            />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <User className="h-12 w-12 text-muted-foreground" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              {clients.length === 0
+                ? "まだクライアントがありません"
+                : "検索に一致するクライアントがありません"}
+            </p>
+            {clients.length === 0 && (
+              <Button className="mt-4" onClick={() => setShowForm(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                最初のクライアントを追加
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((client) => (
+            <Link key={client.id} to={`/clients/${client.id}`}>
+              <Card
+                className={cn(
+                  "transition-colors hover:bg-accent/50",
+                  "cursor-pointer"
+                )}
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {client.name || "（名前未設定）"}
+                  </CardTitle>
+                  <CardDescription>
+                    {client.company_name || "—"}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
