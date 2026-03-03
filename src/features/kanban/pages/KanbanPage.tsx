@@ -16,10 +16,11 @@ import { useKanbanStore } from "@/stores/kanbanStore";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { KanbanCard } from "../components/KanbanCard";
 import { KanbanFilters } from "../components/KanbanFilters";
+import { ProjectsTable } from "../components/ProjectsTable";
 import { Button } from "@/components/ui/button";
 import { PROJECT_STATUS } from "@/types/enums";
 import type { ProjectWithClient } from "@/types/database";
-import { Plus } from "lucide-react";
+import { LayoutGrid, List, Plus } from "lucide-react";
 
 const COLUMN_STATUSES = [
   PROJECT_STATUS.NOT_STARTED,
@@ -34,6 +35,7 @@ export function KanbanPage() {
   const { data: clients = [] } = useClients(user?.id);
   const { filters } = useKanbanStore();
   const updateStatus = useUpdateProjectStatus(user?.id);
+  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [activeProject, setActiveProject] = useState<ProjectWithClient | null>(
     null
   );
@@ -111,22 +113,52 @@ export function KanbanPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">カンバン</h1>
-          <p className="text-muted-foreground">案件をドラッグしてステータスを更新</p>
+          <h1 className="text-2xl font-bold tracking-tight">案件一覧</h1>
+          <p className="text-muted-foreground">
+            {viewMode === "kanban"
+              ? "案件をドラッグしてステータスを更新"
+              : "案件を一覧で確認"}
+          </p>
         </div>
-        <Button asChild size="sm">
-          <Link to="/projects/new">
-            <Plus className="mr-1.5 h-4 w-4" />
-            案件を追加
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border border-input p-0.5">
+            <Button
+              type="button"
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setViewMode("kanban")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              カンバン
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setViewMode("table")}
+            >
+              <List className="h-4 w-4" />
+              テーブル
+            </Button>
+          </div>
+          <Button asChild size="sm">
+            <Link to="/projects/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              案件を追加
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <KanbanFilters clients={clients} />
 
-      {isLoading ? (
+      {viewMode === "table" ? (
+        <ProjectsTable projects={filteredProjects} isLoading={isLoading} />
+      ) : isLoading ? (
         <div className="space-y-4">
           <div className="flex gap-4 overflow-x-auto pb-2">
             {[1, 2, 3, 4].map((i) => (
