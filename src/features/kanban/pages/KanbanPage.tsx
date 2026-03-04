@@ -157,7 +157,12 @@ export function KanbanPage() {
       <KanbanFilters clients={clients} />
 
       {viewMode === "table" ? (
-        <ProjectsTable projects={filteredProjects} isLoading={isLoading} />
+        <ProjectsTable
+          projects={filteredProjects}
+          isLoading={isLoading}
+          userId={user?.id}
+          clientOptions={clients.map((c) => ({ id: c.id, name: c.name }))}
+        />
       ) : isLoading ? (
         <div className="space-y-4">
           <div className="flex gap-4 overflow-x-auto pb-2">
