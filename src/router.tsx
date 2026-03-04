@@ -36,6 +36,11 @@ const InvoicesPage = lazy(() =>
 const InvoiceNewPage = lazy(() =>
   import("./features/invoices/pages/InvoiceNewPage").then((m) => ({ default: m.InvoiceNewPage }))
 );
+const InvoiceDetailPage = lazy(() =>
+  import("./features/invoices/pages/InvoiceDetailPage").then((m) => ({
+    default: m.InvoiceDetailPage,
+  }))
+);
 
 const ProtectedRoute = lazy(() =>
   import("./features/auth/components/ProtectedRoute").then((m) => ({
@@ -74,6 +79,7 @@ export function AppRouter() {
           <Route path="clients/:id" element={<ClientDetailPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="invoices" element={<InvoicesPage />} />
+          <Route path="invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="invoice/new" element={<InvoiceNewPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

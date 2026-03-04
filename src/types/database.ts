@@ -58,7 +58,7 @@ export interface WorkLog {
 export interface Invoice {
   id: string;
   user_id: string;
-  project_id: string;
+  client_id: string;
   status: InvoiceStatus;
   amount: number | null;
   misoca_id: string | null;
@@ -67,6 +67,20 @@ export interface Invoice {
   paid_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  project_id: string;
+  amount: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 請求書 + 明細（案件ごとの金額） */
+export interface InvoiceWithItems extends Invoice {
+  invoice_items: InvoiceItem[];
 }
 
 /** 案件 + クライアント名（一覧・カンバン用） */

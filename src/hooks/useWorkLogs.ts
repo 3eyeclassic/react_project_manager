@@ -1,5 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchWorkLogs, fetchWorkLogsByProject } from "@/api/workLogs";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  fetchWorkLogs,
+  fetchWorkLogsByProject,
+  createWorkLog,
+  type CreateWorkLogInput,
+} from "@/api/workLogs";
 
 export function useWorkLogs(
   userId: string | undefined,
@@ -20,5 +25,15 @@ export function useWorkLogsByProject(
     queryKey: ["work_logs", projectId, userId],
     queryFn: () => fetchWorkLogsByProject(projectId!, userId!),
     enabled: !!userId && !!projectId,
+  });
+}
+
+export function useCreateWorkLog(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateWorkLogInput) => createWorkLog(userId!, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["work_logs"] });
+    },
   });
 }

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useProjects } from "@/hooks/useProjects";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useInvoiceItems } from "@/hooks/useInvoices";
 import { useWorkLogs } from "@/hooks/useWorkLogs";
 import { PeriodFilter } from "../components/PeriodFilter";
 import { KpiCards } from "../components/KpiCards";
@@ -26,6 +27,7 @@ export function DashboardPage() {
   const user = useCurrentUser();
   const { data: projects = [], isLoading: projectsLoading } = useProjects(user?.id);
   const { data: invoices = [] } = useInvoices(user?.id);
+  const { data: invoiceItems = [] } = useInvoiceItems(user?.id);
   const today = useMemo(() => new Date(), []);
   const [period, setPeriod] = useState<PeriodType>("month");
   const [customStart, setCustomStart] = useState(
@@ -48,20 +50,20 @@ export function DashboardPage() {
   );
 
   const currentMonthRevenue = useMemo(
-    () => computeRevenueInRange(projects, invoices, currentMonthRange),
-    [projects, invoices, currentMonthRange]
+    () => computeRevenueInRange(projects, invoices, invoiceItems, currentMonthRange),
+    [projects, invoices, invoiceItems, currentMonthRange]
   );
   const lastMonthRevenue = useMemo(
-    () => computeRevenueInRange(projects, invoices, lastMonthRange),
-    [projects, invoices, lastMonthRange]
+    () => computeRevenueInRange(projects, invoices, invoiceItems, lastMonthRange),
+    [projects, invoices, invoiceItems, lastMonthRange]
   );
   const unpaidTotal = useMemo(
-    () => computeUnpaidTotal(projects, invoices),
-    [projects, invoices]
+    () => computeUnpaidTotal(projects, invoices, invoiceItems),
+    [projects, invoices, invoiceItems]
   );
   const revenueInRange = useMemo(
-    () => computeRevenueInRange(projects, invoices, range),
-    [projects, invoices, range]
+    () => computeRevenueInRange(projects, invoices, invoiceItems, range),
+    [projects, invoices, invoiceItems, range]
   );
   const paidCountInRange = useMemo(() => {
     let count = 0;
@@ -76,16 +78,16 @@ export function DashboardPage() {
     paidCountInRange > 0 ? Math.round(revenueInRange / paidCountInRange) : 0;
 
   const monthlyRevenue = useMemo(
-    () => monthlyRevenueSeries(projects, invoices, range),
-    [projects, invoices, range]
+    () => monthlyRevenueSeries(projects, invoices, invoiceItems, range),
+    [projects, invoices, invoiceItems, range]
   );
   const clientRevenue = useMemo(
-    () => clientRevenueSeries(projects, invoices, range),
-    [projects, invoices, range]
+    () => clientRevenueSeries(projects, invoices, invoiceItems, range),
+    [projects, invoices, invoiceItems, range]
   );
   const categoryRevenue = useMemo(
-    () => categoryRevenueSeries(projects, invoices, range),
-    [projects, invoices, range]
+    () => categoryRevenueSeries(projects, invoices, invoiceItems, range),
+    [projects, invoices, invoiceItems, range]
   );
   const { data: workLogs = [] } = useWorkLogs(user?.id, {
     startDate: range.start.toISOString(),

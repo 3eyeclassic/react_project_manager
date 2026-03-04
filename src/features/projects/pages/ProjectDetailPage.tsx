@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  PROJECT_STATUS,
   PROJECT_STATUS_LABELS,
   SUB_STATUS_LABELS,
   PRIORITY_LABELS,
@@ -256,14 +257,21 @@ export function ProjectDetailPage() {
             <FileText className="h-5 w-5" />
             請求書
           </CardTitle>
-          <CardDescription>請求書の作成・管理</CardDescription>
+          <CardDescription>請求書の作成・管理（完了した案件のみ作成可能）</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild>
-            <Link to={`/invoice/new?project_id=${project.id}`}>
-              請求書を作成
-            </Link>
-          </Button>
+          {project.status === PROJECT_STATUS.COMPLETED ||
+          project.status === PROJECT_STATUS.PAYMENT_RECEIVED ? (
+            <Button asChild>
+              <Link to={`/invoice/new?client_id=${project.client_id}`}>
+                請求書を作成
+              </Link>
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              請求書は案件を「完了」にしたあとで作成できます。
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
