@@ -2,9 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchProjects,
   fetchProjectById,
+  fetchArchivedProjects,
   createProject,
   updateProject,
   updateProjectStatus,
+  archiveProject,
+  unarchiveProject,
   deleteProject,
   type CreateProjectInput,
   type UpdateProjectInput,
@@ -27,6 +30,14 @@ export function useProject(
     queryKey: ["projects", userId, id],
     queryFn: () => fetchProjectById(id!, userId!),
     enabled: !!userId && !!id,
+  });
+}
+
+export function useArchivedProjects(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["projects", "archived", userId],
+    queryFn: () => fetchArchivedProjects(userId!),
+    enabled: !!userId,
   });
 }
 
@@ -64,6 +75,30 @@ export function useUpdateProjectStatus(userId: string | undefined) {
       updateProjectStatus(id, userId!, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useArchiveProject(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => archiveProject(id, userId!),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", "archived"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", userId, id] });
+    },
+  });
+}
+
+export function useUnarchiveProject(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unarchiveProject(id, userId!),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", "archived"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", userId, id] });
     },
   });
 }

@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useProject, useUpdateProject } from "@/hooks/useProjects";
+import {
+  useProject,
+  useUpdateProject,
+  useArchiveProject,
+  useUnarchiveProject,
+} from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
 import { useWorkLogsByProject } from "@/hooks/useWorkLogs";
 import { ProjectForm } from "../components/ProjectForm";
@@ -21,7 +26,7 @@ import {
   BILLING_TYPE_LABELS,
 } from "@/types/enums";
 import type { UpdateProjectInput } from "@/api/projects";
-import { ArrowLeft, FileText, Pencil, Clock } from "lucide-react";
+import { ArrowLeft, FileText, Pencil, Clock, Archive, ArchiveRestore } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -32,6 +37,8 @@ export function ProjectDetailPage() {
   const { data: clients = [] } = useClients(user?.id);
   const { data: workLogs = [] } = useWorkLogsByProject(id, user?.id);
   const updateProject = useUpdateProject(user?.id);
+  const archiveProject = useArchiveProject(user?.id);
+  const unarchiveProject = useUnarchiveProject(user?.id);
   const [editing, setEditing] = useState(false);
 
   const totalSeconds = workLogs.reduce((acc, w) => acc + (w.duration ?? 0), 0);
@@ -274,6 +281,44 @@ export function ProjectDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {(project.status === PROJECT_STATUS.PAYMENT_RECEIVED && !project.archived_at) ||
+      project.archived_at ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5" />
+              アーカイブ
+            </CardTitle>
+            <CardDescription>
+              {project.archived_at
+                ? "アーカイブを解除するとカンバン・テーブルに再表示されます"
+                : "アーカイブするとカンバン・テーブルから非表示になります"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {project.archived_at ? (
+              <Button
+                variant="outline"
+                onClick={() => unarchiveProject.mutate(project.id)}
+                disabled={unarchiveProject.isPending}
+              >
+                <ArchiveRestore className="mr-2 h-4 w-4" />
+                アーカイブ解除
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => archiveProject.mutate(project.id)}
+                disabled={archiveProject.isPending}
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                アーカイブする
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

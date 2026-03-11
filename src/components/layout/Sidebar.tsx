@@ -4,6 +4,7 @@ import {
   Users,
   BarChart3,
   FileText,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ const navItems = [
   { to: "/clients", label: "クライアント", icon: Users },
   { to: "/dashboard", label: "ダッシュボード", icon: BarChart3 },
   { to: "/invoices", label: "請求一覧", icon: FileText },
+  { to: "/projects/archived", label: "アーカイブ済み", icon: Archive },
 ];
 
 export function Sidebar() {

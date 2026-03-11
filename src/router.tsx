@@ -17,6 +17,11 @@ const ProjectNewPage = lazy(() =>
     default: m.ProjectNewPage,
   }))
 );
+const ArchivedProjectsPage = lazy(() =>
+  import("./features/projects/pages/ArchivedProjectsPage").then((m) => ({
+    default: m.ArchivedProjectsPage,
+  }))
+);
 const ClientsPage = lazy(() =>
   import("./features/clients/pages/ClientsPage").then((m) => ({ default: m.ClientsPage }))
 );
@@ -74,6 +79,7 @@ export function AppRouter() {
         >
           <Route index element={<KanbanPage />} />
           <Route path="projects/new" element={<ProjectNewPage />} />
+          <Route path="projects/archived" element={<ArchivedProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:id" element={<ClientDetailPage />} />

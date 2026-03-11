@@ -39,6 +39,7 @@ export interface Project {
   payment_date: string | null;
   progress: number;
   gcal_event_id: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }

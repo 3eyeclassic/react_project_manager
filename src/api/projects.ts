@@ -12,7 +12,27 @@ export async function fetchProjects(userId: string): Promise<ProjectWithClient[]
     `
     )
     .eq("user_id", userId)
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as ProjectWithClient[];
+}
+
+export async function fetchArchivedProjects(
+  userId: string
+): Promise<ProjectWithClient[]> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select(
+      `
+      *,
+      clients ( id, name )
+    `
+    )
+    .eq("user_id", userId)
+    .not("archived_at", "is", null)
+    .order("archived_at", { ascending: false });
 
   if (error) throw error;
   return (data ?? []) as ProjectWithClient[];
@@ -94,6 +114,7 @@ export interface UpdateProjectInput {
   invoice_date?: string | null;
   payment_date?: string | null;
   progress?: number;
+  archived_at?: string | null;
 }
 
 export async function updateProject(
@@ -119,6 +140,16 @@ export async function updateProjectStatus(
   status: ProjectStatus
 ): Promise<Project> {
   return updateProject(id, userId, { status });
+}
+
+export async function archiveProject(id: string, userId: string): Promise<Project> {
+  return updateProject(id, userId, {
+    archived_at: new Date().toISOString(),
+  });
+}
+
+export async function unarchiveProject(id: string, userId: string): Promise<Project> {
+  return updateProject(id, userId, { archived_at: null });
 }
 
 export async function deleteProject(id: string, userId: string): Promise<void> {
