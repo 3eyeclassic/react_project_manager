@@ -1,19 +1,17 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useClients, useCreateClient } from "@/hooks/useClients";
 import { ClientForm } from "../components/ClientForm";
+import { ClientsTable } from "../components/ClientsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Plus, Search, User } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, Search } from "lucide-react";
 
 export function ClientsPage() {
   const user = useCurrentUser();
@@ -82,55 +80,12 @@ export function ClientsPage() {
         />
       </div>
 
-      {isLoading ? (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="h-28 animate-pulse rounded-lg border bg-muted/50"
-            />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <User className="h-12 w-12 text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              {clients.length === 0
-                ? "まだクライアントがありません"
-                : "検索に一致するクライアントがありません"}
-            </p>
-            {clients.length === 0 && (
-              <Button className="mt-4" onClick={() => setShowForm(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                最初のクライアントを追加
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((client) => (
-            <Link key={client.id} to={`/clients/${client.id}`}>
-              <Card
-                className={cn(
-                  "transition-colors hover:bg-accent/50",
-                  "cursor-pointer"
-                )}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">
-                    {client.name || "（名前未設定）"}
-                  </CardTitle>
-                  <CardDescription>
-                    {client.company_name || "—"}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
+      <ClientsTable
+        clients={filtered}
+        isLoading={isLoading}
+        totalCount={clients.length}
+        onAddClick={() => setShowForm(true)}
+      />
     </div>
   );
 }
