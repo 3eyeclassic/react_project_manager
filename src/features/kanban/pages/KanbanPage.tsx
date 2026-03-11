@@ -16,6 +16,7 @@ import { useKanbanStore } from "@/stores/kanbanStore";
 import { KanbanColumn } from "../components/KanbanColumn";
 import { KanbanCard } from "../components/KanbanCard";
 import { KanbanFilters } from "../components/KanbanFilters";
+import { TableFilters } from "../components/TableFilters";
 import { ProjectsTable } from "../components/ProjectsTable";
 import { Button } from "@/components/ui/button";
 import { PROJECT_STATUS } from "@/types/enums";
@@ -74,12 +75,12 @@ export function KanbanPage() {
       [PROJECT_STATUS.COMPLETED]: [],
       [PROJECT_STATUS.PAYMENT_RECEIVED]: [],
     };
-    for (const p of filteredProjects) {
+    for (const p of projects) {
       const status = p.status as keyof typeof map;
       if (map[status]) map[status].push(p);
     }
     return map;
-  }, [filteredProjects]);
+  }, [projects]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -154,7 +155,8 @@ export function KanbanPage() {
         </div>
       </div>
 
-      <KanbanFilters clients={clients} />
+      {viewMode === "kanban" && <KanbanFilters />}
+      {viewMode === "table" && <TableFilters clients={clients} />}
 
       {viewMode === "table" ? (
         <ProjectsTable
