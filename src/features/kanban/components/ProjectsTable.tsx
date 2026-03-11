@@ -4,10 +4,14 @@ import { format } from "date-fns";
 import {
   type ColumnDef,
   type RowData,
+  type Row,
+  type Column,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
   flexRender,
 } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 import type { ProjectWithClient } from "@/types/database";
 import type { UpdateProjectInput } from "@/api/projects";
 import {
@@ -17,7 +21,7 @@ import {
   PRIORITY_LABELS,
 } from "@/types/enums";
 import type { ProjectStatus, Priority } from "@/types/enums";
-import { FolderOpen, ExternalLink } from "lucide-react";
+import { FolderOpen, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -59,6 +63,77 @@ const PRIORITY_BADGE_CLASSES: Record<Priority, string> = {
 
 const PROJECT_STATUS_OPTIONS = Object.values(PROJECT_STATUS);
 const PRIORITY_OPTIONS = Object.values(PRIORITY);
+
+/** ステータスをワークフロー順（未着手→進行中→完了→入金完了）で比較 */
+function sortByStatus(
+  rowA: Row<ProjectWithClient>,
+  rowB: Row<ProjectWithClient>,
+  columnId: string
+): number {
+  const a = rowA.getValue(columnId) as ProjectStatus | undefined;
+  const b = rowB.getValue(columnId) as ProjectStatus | undefined;
+  const order = PROJECT_STATUS_OPTIONS as readonly string[];
+  const i = a ? order.indexOf(a) : -1;
+  const j = b ? order.indexOf(b) : -1;
+  return i - j;
+}
+
+/** 優先度を high → medium → low の順で比較 */
+function sortByPriority(
+  rowA: Row<ProjectWithClient>,
+  rowB: Row<ProjectWithClient>,
+  columnId: string
+): number {
+  const a = rowA.getValue(columnId) as Priority | undefined;
+  const b = rowB.getValue(columnId) as Priority | undefined;
+  const order = PRIORITY_OPTIONS as readonly string[];
+  const i = a ? order.indexOf(a) : -1;
+  const j = b ? order.indexOf(b) : -1;
+  return i - j;
+}
+
+function SortableHeader({
+  column,
+  children,
+}: {
+  column: Column<ProjectWithClient, unknown>;
+  children: React.ReactNode;
+}) {
+  if (!column.getCanSort()) return <>{children}</>;
+  const sorted = column.getIsSorted();
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center gap-1.5 font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1 -mx-1"
+      onClick={column.getToggleSortingHandler()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          column.getToggleSortingHandler()?.(e as unknown as React.MouseEvent);
+        }
+      }}
+      aria-sort={
+        sorted === "asc"
+          ? "ascending"
+          : sorted === "desc"
+            ? "descending"
+            : undefined
+      }
+      title="クリックでソート"
+    >
+      {children}
+      <span className="inline-flex text-muted-foreground">
+        {sorted === false ? (
+          <ArrowUpDown className="h-4 w-4" aria-hidden />
+        ) : sorted === "asc" ? (
+          <ArrowUp className="h-4 w-4" aria-hidden />
+        ) : (
+          <ArrowDown className="h-4 w-4" aria-hidden />
+        )}
+      </span>
+    </button>
+  );
+}
 
 const selectClassName = cn(
   "flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm",
@@ -108,6 +183,7 @@ export function ProjectsTable({
   clientOptions = [],
 }: ProjectsTableProps) {
   const updateProject = useUpdateProject(userId);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [editingCell, setEditingCell] = useState<{
     projectId: string;
     field: EditableField;
@@ -183,7 +259,10 @@ export function ProjectsTable({
     () => [
       {
         accessorKey: "name",
-        header: "案件名",
+        header: ({ column }) => (
+          <SortableHeader column={column}>案件名</SortableHeader>
+        ),
+        enableSorting: true,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -227,7 +306,12 @@ export function ProjectsTable({
       },
       {
         id: "client",
-        header: "クライアント",
+        accessorFn: (row) =>
+          (row.clients as { name?: string } | null)?.name ?? "",
+        header: ({ column }) => (
+          <SortableHeader column={column}>クライアント</SortableHeader>
+        ),
+        enableSorting: true,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -275,7 +359,11 @@ export function ProjectsTable({
       },
       {
         accessorKey: "status",
-        header: "ステータス",
+        header: ({ column }) => (
+          <SortableHeader column={column}>ステータス</SortableHeader>
+        ),
+        enableSorting: true,
+        sortingFn: sortByStatus,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -330,7 +418,11 @@ export function ProjectsTable({
       },
       {
         accessorKey: "priority",
-        header: "優先度",
+        header: ({ column }) => (
+          <SortableHeader column={column}>優先度</SortableHeader>
+        ),
+        enableSorting: true,
+        sortingFn: sortByPriority,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -385,7 +477,14 @@ export function ProjectsTable({
       },
       {
         id: "amount",
-        header: "金額",
+        accessorFn: (row) =>
+          row.billing_type === "fixed"
+            ? (row.amount ?? 0)
+            : (row.hourly_rate ?? 0),
+        header: ({ column }) => (
+          <SortableHeader column={column}>金額</SortableHeader>
+        ),
+        enableSorting: true,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -440,7 +539,10 @@ export function ProjectsTable({
       },
       {
         accessorKey: "start_date",
-        header: "開始日",
+        header: ({ column }) => (
+          <SortableHeader column={column}>開始日</SortableHeader>
+        ),
+        enableSorting: true,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -482,7 +584,10 @@ export function ProjectsTable({
       },
       {
         accessorKey: "end_date",
-        header: "終了日",
+        header: ({ column }) => (
+          <SortableHeader column={column}>終了日</SortableHeader>
+        ),
+        enableSorting: true,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -524,7 +629,10 @@ export function ProjectsTable({
       },
       {
         accessorKey: "progress",
-        header: "進捗",
+        header: ({ column }) => (
+          <SortableHeader column={column}>進捗</SortableHeader>
+        ),
+        enableSorting: true,
         cell: ({ row, table }) => {
           const project = row.original;
           const meta = table.options.meta!;
@@ -573,6 +681,7 @@ export function ProjectsTable({
             {
               id: "actions",
               header: () => <span className="sr-only">操作</span>,
+              enableSorting: false,
               cell: ({ row }: { row: { original: ProjectWithClient } }) => {
                 const project = row.original;
                 return (
@@ -605,7 +714,10 @@ export function ProjectsTable({
   const table = useReactTable({
     data: projects,
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     meta: tableMeta,
   });
 
