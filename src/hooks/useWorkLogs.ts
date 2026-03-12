@@ -3,7 +3,10 @@ import {
   fetchWorkLogs,
   fetchWorkLogsByProject,
   createWorkLog,
+  updateWorkLog,
+  deleteWorkLog,
   type CreateWorkLogInput,
+  type UpdateWorkLogInput,
 } from "@/api/workLogs";
 
 export function useWorkLogs(
@@ -32,6 +35,32 @@ export function useCreateWorkLog(userId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateWorkLogInput) => createWorkLog(userId!, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["work_logs"] });
+    },
+  });
+}
+
+export function useUpdateWorkLog(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: UpdateWorkLogInput;
+    }) => updateWorkLog(id, userId!, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["work_logs"] });
+    },
+  });
+}
+
+export function useDeleteWorkLog(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteWorkLog(id, userId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["work_logs"] });
     },

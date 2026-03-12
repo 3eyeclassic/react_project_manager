@@ -8,8 +8,16 @@ import {
   useUnarchiveProject,
 } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
-import { useWorkLogsByProject } from "@/hooks/useWorkLogs";
+import {
+  useWorkLogsByProject,
+  useCreateWorkLog,
+  useUpdateWorkLog,
+  useDeleteWorkLog,
+} from "@/hooks/useWorkLogs";
 import { ProjectForm } from "../components/ProjectForm";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,9 +34,111 @@ import {
   BILLING_TYPE_LABELS,
 } from "@/types/enums";
 import type { UpdateProjectInput } from "@/api/projects";
-import { ArrowLeft, FileText, Pencil, Clock, Archive, ArchiveRestore } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Pencil,
+  Clock,
+  Archive,
+  ArchiveRestore,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import type { WorkLog } from "@/types/database";
+
+function toDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day}T${h}:${min}`;
+}
+
+function WorkLogForm({
+  projectId: _projectId,
+  initialLog,
+  onSave,
+  onCancel,
+  isLoading,
+}: {
+  projectId: string;
+  initialLog?: WorkLog | null;
+  onSave: (started_at: string, ended_at: string, memo: string) => Promise<void>;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const now = new Date();
+  const defaultStart = new Date(now.getTime() - 60 * 60 * 1000);
+  const [startedAt, setStartedAt] = useState(
+    initialLog ? toDatetimeLocal(initialLog.started_at) : toDatetimeLocal(defaultStart.toISOString())
+  );
+  const [endedAt, setEndedAt] = useState(() => {
+    if (initialLog?.ended_at) return toDatetimeLocal(initialLog.ended_at);
+    if (initialLog) {
+      const end = new Date(
+        new Date(initialLog.started_at).getTime() + (initialLog.duration ?? 0) * 1000
+      );
+      return toDatetimeLocal(end.toISOString());
+    }
+    return toDatetimeLocal(now.toISOString());
+  });
+  const [memo, setMemo] = useState(initialLog?.memo ?? "");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!startedAt || !endedAt) return;
+    await onSave(startedAt, endedAt, memo);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-2">
+        <Label htmlFor="worklog-started">開始</Label>
+        <Input
+          id="worklog-started"
+          type="datetime-local"
+          value={startedAt}
+          onChange={(e) => setStartedAt(e.target.value)}
+          required
+          className="w-full"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="worklog-ended">終了</Label>
+        <Input
+          id="worklog-ended"
+          type="datetime-local"
+          value={endedAt}
+          onChange={(e) => setEndedAt(e.target.value)}
+          required
+          className="w-full"
+        />
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="worklog-memo">メモ（任意）</Label>
+        <Input
+          id="worklog-memo"
+          value={memo}
+          onChange={(e) => setMemo(e.target.value)}
+          placeholder="作業内容など"
+          className="w-full"
+        />
+      </div>
+      <div className="flex gap-2 sm:col-span-2">
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "保存中..." : "保存"}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          キャンセル
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,7 +149,13 @@ export function ProjectDetailPage() {
   const updateProject = useUpdateProject(user?.id);
   const archiveProject = useArchiveProject(user?.id);
   const unarchiveProject = useUnarchiveProject(user?.id);
+  const createWorkLog = useCreateWorkLog(user?.id);
+  const updateWorkLog = useUpdateWorkLog(user?.id);
+  const deleteWorkLog = useDeleteWorkLog(user?.id);
   const [editing, setEditing] = useState(false);
+  const [showWorkLogAdd, setShowWorkLogAdd] = useState(false);
+  const [editingWorkLogId, setEditingWorkLogId] = useState<string | null>(null);
+  const [deleteWorkLogId, setDeleteWorkLogId] = useState<string | null>(null);
 
   const totalSeconds = workLogs.reduce((acc, w) => acc + (w.duration ?? 0), 0);
   const hours = Math.floor(totalSeconds / 3600);
@@ -216,40 +332,137 @@ export function ProjectDetailPage() {
         </Card>
       )}
 
+      <ConfirmDialog
+        open={!!deleteWorkLogId}
+        onOpenChange={(open) => !open && setDeleteWorkLogId(null)}
+        title="作業ログを削除"
+        description="この作業ログを削除しますか？"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteWorkLogId) deleteWorkLog.mutate(deleteWorkLogId);
+          setDeleteWorkLogId(null);
+        }}
+        isLoading={deleteWorkLog.isPending}
+      />
+
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            作業ログ
-          </CardTitle>
-          <CardDescription>この案件の作業記録</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              作業ログ
+            </CardTitle>
+            <CardDescription>この案件の作業記録（手動追加・編集可）</CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowWorkLogAdd((v) => !v)}
+            disabled={!!editingWorkLogId}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            手動で追加
+          </Button>
         </CardHeader>
-        <CardContent>
-          {workLogs.length === 0 ? (
+        <CardContent className="space-y-4">
+          {showWorkLogAdd && id && user?.id && (
+            <WorkLogForm
+              projectId={id}
+              onSave={async (started_at, ended_at, memo) => {
+                const start = new Date(started_at).getTime();
+                const end = new Date(ended_at).getTime();
+                const duration = Math.max(0, Math.floor((end - start) / 1000));
+                await createWorkLog.mutateAsync({
+                  project_id: id,
+                  started_at: new Date(started_at).toISOString(),
+                  ended_at: new Date(ended_at).toISOString(),
+                  duration,
+                  memo: memo || null,
+                });
+                setShowWorkLogAdd(false);
+              }}
+              onCancel={() => setShowWorkLogAdd(false)}
+              isLoading={createWorkLog.isPending}
+            />
+          )}
+
+          {workLogs.length === 0 && !showWorkLogAdd ? (
             <p className="text-sm text-muted-foreground">
               まだ作業ログがありません
             </p>
           ) : (
             <ul className="space-y-2">
-              {workLogs.map((log) => (
-                <li
-                  key={log.id}
-                  className="flex justify-between text-sm"
-                >
-                  <span>
-                    {format(
-                      new Date(log.started_at),
-                      "yyyy/MM/dd HH:mm",
-                      { locale: ja }
-                    )}
-                    {log.memo && ` — ${log.memo}`}
-                  </span>
-                  <span>
-                    {Math.floor(log.duration / 3600)}h{" "}
-                    {Math.floor((log.duration % 3600) / 60)}m
-                  </span>
-                </li>
-              ))}
+              {workLogs.map((log) =>
+                editingWorkLogId === log.id ? (
+                  <li key={log.id} className="rounded-md border bg-muted/30 p-3">
+                    <WorkLogForm
+                      projectId={log.project_id}
+                      initialLog={log}
+                      onSave={async (started_at, ended_at, memo) => {
+                        const start = new Date(started_at).getTime();
+                        const end = new Date(ended_at).getTime();
+                        const duration = Math.max(
+                          0,
+                          Math.floor((end - start) / 1000)
+                        );
+                        await updateWorkLog.mutateAsync({
+                          id: log.id,
+                          input: {
+                            started_at: new Date(started_at).toISOString(),
+                            ended_at: new Date(ended_at).toISOString(),
+                            duration,
+                            memo: memo || null,
+                          },
+                        });
+                        setEditingWorkLogId(null);
+                      }}
+                      onCancel={() => setEditingWorkLogId(null)}
+                      isLoading={updateWorkLog.isPending}
+                    />
+                  </li>
+                ) : (
+                  <li
+                    key={log.id}
+                    className="flex items-center justify-between gap-2 text-sm"
+                  >
+                    <span>
+                      {format(
+                        new Date(log.started_at),
+                        "yyyy/MM/dd HH:mm",
+                        { locale: ja }
+                      )}
+                      {log.memo && ` — ${log.memo}`}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="tabular-nums text-muted-foreground">
+                        {Math.floor(log.duration / 3600)}h{" "}
+                        {Math.floor((log.duration % 3600) / 60)}m
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setEditingWorkLogId(log.id)}
+                        disabled={!!showWorkLogAdd}
+                        title="編集"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteWorkLogId(log.id)}
+                        disabled={!!showWorkLogAdd}
+                        title="削除"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </span>
+                  </li>
+                )
+              )}
             </ul>
           )}
           <p className="mt-2 text-sm text-muted-foreground">
