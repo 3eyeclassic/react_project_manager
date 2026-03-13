@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useProject,
@@ -34,6 +35,7 @@ import {
   BILLING_TYPE_LABELS,
 } from "@/types/enums";
 import type { UpdateProjectInput } from "@/api/projects";
+import { syncProjectToGCal } from "@/api/gcal";
 import {
   ArrowLeft,
   FileText,
@@ -142,6 +144,7 @@ function WorkLogForm({
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const user = useCurrentUser();
   const { data: project, isLoading, error } = useProject(id, user?.id);
   const { data: clients = [] } = useClients(user?.id);
@@ -156,6 +159,7 @@ export function ProjectDetailPage() {
   const [showWorkLogAdd, setShowWorkLogAdd] = useState(false);
   const [editingWorkLogId, setEditingWorkLogId] = useState<string | null>(null);
   const [deleteWorkLogId, setDeleteWorkLogId] = useState<string | null>(null);
+  const [gcalSyncError, setGcalSyncError] = useState<string | null>(null);
 
   const totalSeconds = workLogs.reduce((acc, w) => acc + (w.duration ?? 0), 0);
   const hours = Math.floor(totalSeconds / 3600);
@@ -210,19 +214,37 @@ export function ProjectDetailPage() {
         </CardHeader>
         <CardContent>
           {editing ? (
-            <ProjectForm
-              project={project}
-              clientOptions={clientOptions}
-              onSubmit={async (input) => {
-                await updateProject.mutateAsync({
-                  id: project.id,
-                  input: input as UpdateProjectInput,
-                });
-                setEditing(false);
-              }}
-              onCancel={() => setEditing(false)}
-              isLoading={updateProject.isPending}
-            />
+            <>
+              {gcalSyncError && (
+                <div className="mb-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+                  {gcalSyncError}
+                </div>
+              )}
+              <ProjectForm
+                project={project}
+                clientOptions={clientOptions}
+                onSubmit={async (input) => {
+                  setGcalSyncError(null);
+                  await updateProject.mutateAsync({
+                    id: project.id,
+                    input: input as UpdateProjectInput,
+                  });
+                  try {
+                    await syncProjectToGCal(project.id);
+                    if (user?.id && id) {
+                      queryClient.invalidateQueries({
+                        queryKey: ["projects", user.id, id],
+                      });
+                    }
+                  } catch {
+                    setGcalSyncError("カレンダー同期に失敗しました。連携設定を確認してください。");
+                  }
+                  setEditing(false);
+                }}
+                onCancel={() => setEditing(false)}
+                isLoading={updateProject.isPending}
+              />
+            </>
           ) : (
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>

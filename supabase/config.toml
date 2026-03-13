@@ -1,0 +1,7 @@
+# Edge Functions: allow OPTIONS (preflight) without JWT so CORS works from browser.
+# POST is still validated in function code (Authorization required).
+[functions.exchange-google-code]
+verify_jwt = false
+
+[functions.sync-project-gcal]
+verify_jwt = false

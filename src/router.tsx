@@ -46,6 +46,16 @@ const InvoiceDetailPage = lazy(() =>
     default: m.InvoiceDetailPage,
   }))
 );
+const IntegrationsPage = lazy(() =>
+  import("./features/integrations/pages/IntegrationsPage").then((m) => ({
+    default: m.IntegrationsPage,
+  }))
+);
+const GoogleCallbackPage = lazy(() =>
+  import("./features/integrations/pages/GoogleCallbackPage").then((m) => ({
+    default: m.GoogleCallbackPage,
+  }))
+);
 
 const ProtectedRoute = lazy(() =>
   import("./features/auth/components/ProtectedRoute").then((m) => ({
@@ -87,6 +97,8 @@ export function AppRouter() {
           <Route path="invoices" element={<InvoicesPage />} />
           <Route path="invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="invoice/new" element={<InvoiceNewPage />} />
+          <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="integrations/google/callback" element={<GoogleCallbackPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
